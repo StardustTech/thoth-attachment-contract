@@ -1,0 +1,11 @@
+Neutral Attachment Contract v0
+Original specification, tests, and reference implementation authored for the
+Thoth workspace in 2026. No AppFlowy implementation source is included.
+
+License text sources:
+https://www.apache.org/licenses/LICENSE-2.0.txt
+https://github.com/spdx/license-list-data/blob/main/text/GPL-3.0-only.txt
+
+Runtime uses Python, SQLite, and jsonschema. Validation tooling additionally
+uses openapi-spec-validator. Dependency versions are pinned in requirements.lock.
+Dependency notices are preserved separately from this project's license grant.

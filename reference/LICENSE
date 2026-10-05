@@ -1,0 +1,6 @@
+SPDX-License-Identifier: GPL-3.0-only
+
+The implementation files in this directory are licensed under the GNU General
+Public License, version 3 only. The full text is in ../LICENSES/GPL-3.0-only.txt.
+This grant covers this reference implementation, independently of the
+Apache-2.0 specification and conformance tests in sibling directories.

@@ -1,0 +1,14 @@
+Licensing scope
+
+The specification, OpenAPI and JSON Schema definitions, conformance tests,
+validation tools and their newly authored supporting files are licensed under
+Apache-2.0. See LICENSES/Apache-2.0.txt and per-file SPDX identifiers.
+
+The reference/ implementation is licensed under GPL-3.0-only.
+See reference/LICENSE and LICENSES/GPL-3.0-only.txt.
+
+No mandatory SDK is provided. Consumers can implement the Apache-2.0 contract
+using their own HTTP client. The reference implementation is a separate program;
+its implementation code is not part of the permissively licensed interface.
+
+Standard license texts retain their original notices.
