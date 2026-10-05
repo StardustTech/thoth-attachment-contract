@@ -61,5 +61,5 @@ def oas_refs(value):
  return value
 api={'openapi':'3.1.1','info':{'title':'Neutral Attachment Resource Lifecycle','version':'0.1.0','license':{'name':'Apache License 2.0','identifier':'Apache-2.0'},'description':'Normative semantics: spec/semantics.md. Independent implementations use HTTP and schema assets; no implementation SDK dependency.'},'jsonSchemaDialect':'https://json-schema.org/draft/2020-12/schema','security':[{'serviceBearer':[]}],'paths':paths,'components':{'securitySchemes':{'serviceBearer':{'type':'http','scheme':'bearer','description':'Trusted service credential; binding to tenant/action/audience is required. End-user authorization remains at the adapter.'}},'schemas':oas_refs(defs)}}
 for name,data in [('schemas.json',schemas),('openapi.json',api)]:
- (ROOT/'spec'/name).write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
+ (ROOT/'spec'/name).write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n',encoding='utf-8',newline='\n')
 print('schemas',len(defs),'operations',sum(map(len,paths.values())))
