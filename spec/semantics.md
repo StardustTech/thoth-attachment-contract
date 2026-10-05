@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# Neutral Attachment Resource Lifecycle 0.1.0
+# Neutral Attachment Resource Lifecycle 0.2.0
 
-This specification, openapi.json and schemas.json jointly define v0.1.0. Normative
+This specification, openapi.json and schemas.json jointly define v0.2.0. Normative
 MUST/SHOULD refer to observable behavior. The reference program is replaceable.
 
 ## Ownership and identifiers
@@ -24,7 +24,8 @@ the adapter MUST perform current end-user/resource/publication authorization for
 every request, including retries and parts. The reference uses opaque random
 credentials in a private reloadable policy file, with revocation checked per
 request. TLS and deployment identity provisioning are deployment responsibilities;
-the local reference binds loopback and does not issue end-user or presigned URLs.
+the local reference defaults to loopback, with an explicit private container
+interface profile. End-user and presigned URLs remain the adapter's responsibility.
 
 Each tenant request carries X-Tenant-Epoch, a positive integer equal to its active
 placement epoch; stale values fail conflict. Provisioning uses an administrator
@@ -44,7 +45,7 @@ downloaded cannot be revoked. Read responses use Cache-Control: private, no-stor
 Accept only defined /v0 operations, JSON objects matching their schema and raw
 binary bodies. Requests with unknown JSON properties fail 400 invalid; consumers
 ignore additional optional response properties. Required new semantics need a
-new advertised capability/version. X-Contract-Version defaults to 0.1.0; any other
+new advertised capability/version. X-Contract-Version defaults to 0.2.0; any other
 value fails 422 unsupported. X-Required-Capabilities is a comma-separated list
 whose members MUST all be advertised, otherwise 422 unsupported. Invalid JSON,
 duplicate JSON keys, invalid digest/identifier/epoch and undeclared query parameters
@@ -62,6 +63,15 @@ integrity value, distinct from an opaque provider ETag. A part is immutable:
 same number/same bytes succeeds, same number/different bytes conflicts.
 
 ## Operations, concurrency and visibility
+
+Version 0.2.0 advertises `server-measured-content`. Begin may explicitly supply
+null byte_length and/or sha256 when the caller cannot know these before upload.
+Part digests remain mandatory and verified. Unknown length uses the declared
+max_resource_bytes hard cap; Complete computes full length and SHA-256 and fills
+them atomically with READY. Non-null expectations are still strictly verified.
+UPLOADING and its terminal tombstone may retain null expectations; READY always
+contains measured integers/digests. This supports streaming producers without
+placing session/byte staging authority in an application adapter.
 
 All mutations require Idempotency-Key, scoped to tenant (not to HTTP route).
 The fingerprint includes method, path, canonical JSON or raw bytes, media type and

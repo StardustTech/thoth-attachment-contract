@@ -169,6 +169,15 @@ class Contract(unittest.TestCase):
   raw=b'{"resource_id":"bad","media_type":"text/\\ud800","byte_length":0,"sha256":"'+sha(b'').encode()+b'"}'
   self.mutate('POST','/uploads',data=raw,headers={'Content-Type':'application/json'},status=400)
   self.assertEqual(self.get('/usage')['open_uploads'],0)
+ def test_30_server_measured_content(self):
+  caps=self.c.request('GET','/v0/capabilities');self.assertIn('server-measured-content',caps['features'])
+  u=self.mutate('POST','/uploads',body=dict(resource_id='stream',media_type='text/plain',byte_length=None,sha256=None))['upload_id']
+  self.c.part(self.t,u,2,b'world');self.c.part(self.t,u,1,b'hello ')
+  r=self.c.complete(self.t,u,[(1,b'hello '),(2,b'world')]);self.assertEqual((r['byte_length'],r['sha256']),(11,sha(b'hello world')))
+  self.assertEqual(self.c.read(self.t,'stream'),b'hello world')
+  validator=Draft202012Validator({'$ref':'#/$defs/Resource',**SCHEMAS})
+  self.assertFalse(validator.is_valid(dict(r,sha256=None)))
+  self.assertFalse(validator.is_valid(dict(r,byte_length=None)))
 
 class EvidenceResult(unittest.TextTestResult):
  def __init__(self,*args,**kw):super().__init__(*args,**kw);self.records=[]

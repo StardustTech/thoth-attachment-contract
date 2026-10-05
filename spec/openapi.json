@@ -2,7 +2,7 @@
   "openapi": "3.1.1",
   "info": {
     "title": "Neutral Attachment Resource Lifecycle",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "license": {
       "name": "Apache License 2.0",
       "identifier": "Apache-2.0"
@@ -28,7 +28,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -85,7 +85,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -177,7 +177,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -243,7 +243,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -327,7 +327,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -411,7 +411,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -496,7 +496,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -571,7 +571,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -681,7 +681,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -754,7 +754,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -847,7 +847,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -909,7 +909,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -1012,7 +1012,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -1097,7 +1097,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -1209,7 +1209,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -1312,7 +1312,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -1405,7 +1405,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -1471,7 +1471,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -1546,7 +1546,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "0.1.0"
+              "default": "0.2.0"
             }
           },
           {
@@ -1650,13 +1650,27 @@
             "pattern": "^[^\\r\\n]+/[^\\r\\n]+$"
           },
           "byte_length": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 67108864
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 67108864
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "sha256": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "ttl_seconds": {
             "type": "integer",
@@ -1734,12 +1748,26 @@
             "type": "string"
           },
           "byte_length": {
-            "type": "integer",
-            "minimum": 0
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "sha256": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "modified_at": {
             "type": "string",
@@ -1756,7 +1784,30 @@
           "sha256",
           "modified_at"
         ],
-        "additionalProperties": true
+        "additionalProperties": true,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "READY"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "byte_length": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            }
+          }
+        ]
       },
       "Session": {
         "type": "object",
@@ -1944,7 +1995,7 @@
         "type": "object",
         "properties": {
           "contract_version": {
-            "const": "0.1.0"
+            "const": "0.2.0"
           },
           "features": {
             "type": "array",
@@ -2016,7 +2067,7 @@
         "type": "object",
         "properties": {
           "contract_version": {
-            "const": "0.1.0"
+            "const": "0.2.0"
           },
           "tenant": {
             "$ref": "#/components/schemas/Tenant"

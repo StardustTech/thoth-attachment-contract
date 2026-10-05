@@ -10,7 +10,7 @@ from jsonschema import Draft202012Validator,FormatChecker,ValidationError
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 SCHEMAS=json.loads((ROOT/'spec/schemas.json').read_text(encoding='utf-8'))
 API=json.loads((ROOT/'spec/openapi.json').read_text(encoding='utf-8'))
-FEATURES=['single-put','multipart','immutable-resources','idempotency','freeze-export','tenant-close']
+FEATURES=['single-put','multipart','immutable-resources','idempotency','freeze-export','tenant-close','server-measured-content']
 MAX_PART=16*1024*1024;MAX_RESOURCE=64*1024*1024
 ID=re.compile(r'^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$');SHA=re.compile(r'^[a-f0-9]{64}$')
 def normalized(x):
@@ -151,7 +151,7 @@ CREATE TABLE IF NOT EXISTS operations(tenant TEXT,id TEXT,fingerprint TEXT,statu
  def execute(self,operation,method,path,params,query,headers,body,json_body,permission):
   t=params.get('tenant');rid=params.get('resource');uid=params.get('upload')
   opkey=headers.get('Idempotency-Key');mutating=method in ('PUT','POST','DELETE')
-  if operation=='getCapabilities':return dict(contract_version='0.1.0',features=FEATURES,max_resource_bytes=MAX_RESOURCE,max_part_bytes=MAX_PART,max_parts=256,authorization_profile='trusted-service-bearer')
+  if operation=='getCapabilities':return dict(contract_version='0.2.0',features=FEATURES,max_resource_bytes=MAX_RESOURCE,max_part_bytes=MAX_PART,max_parts=256,authorization_profile='trusted-service-bearer')
   try:epoch=int(headers.get('X-Tenant-Epoch',''))
   except ValueError:fail(400,'invalid','X-Tenant-Epoch required')
   if epoch<1:fail(400,'invalid','Invalid epoch')
@@ -231,7 +231,7 @@ CREATE TABLE IF NOT EXISTS operations(tenant TEXT,id TEXT,fingerprint TEXT,statu
     n=int(params['number']);sha=digest(body);existing=db.execute('SELECT sha256,byte_length FROM parts WHERE tenant=? AND upload=? AND number=?',(t,uid,n)).fetchone()
     if existing and existing['sha256']!=sha:fail(409,'conflict','Part already contains different bytes')
     total=db.execute('SELECT coalesce(sum(byte_length),0) FROM parts WHERE tenant=? AND upload=?',(t,uid)).fetchone()[0]
-    if total-(existing['byte_length'] if existing else 0)+len(body)>r['byte_length']:fail(400,'invalid','Parts exceed declared resource length')
+    if total-(existing['byte_length'] if existing else 0)+len(body)>(r['byte_length'] if r['byte_length'] is not None else MAX_RESOURCE):fail(400,'invalid','Parts exceed resource length limit')
     self.write_blob(t,body,opkey);db.execute('INSERT OR IGNORE INTO parts VALUES(?,?,?,?,?)',(t,uid,n,sha,len(body)))
     s['part_count']=len(self.parts(db,t,uid));self.put(db,'uploads',t,uid,s)
     return dict(number=n,sha256=sha,byte_length=len(body))
@@ -239,8 +239,8 @@ CREATE TABLE IF NOT EXISTS operations(tenant TEXT,id TEXT,fingerprint TEXT,statu
    expected=[dict(number=p['number'],sha256=p['sha256']) for p in parts]
    if j['parts']!=expected or [p['number'] for p in parts]!=list(range(1,len(parts)+1)):fail(400,'invalid','Complete manifest mismatch or nonconsecutive parts')
    data=b''.join(self.read_blob(t,p['sha256'],p['byte_length']) for p in parts)
-   if len(data)!=r['byte_length'] or digest(data)!=r['sha256']:fail(400,'invalid','Complete content length or digest mismatch')
-   self.write_blob(t,data,opkey);r.update(state='READY',revision=1,modified_at=now());self.put(db,'resources',t,r['resource_id'],r)
+   if (r['byte_length'] is not None and len(data)!=r['byte_length']) or (r['sha256'] is not None and digest(data)!=r['sha256']):fail(400,'invalid','Complete content length or digest mismatch')
+   self.write_blob(t,data,opkey);r.update(state='READY',revision=1,modified_at=now(),byte_length=len(data),sha256=digest(data));self.put(db,'resources',t,r['resource_id'],r)
    s['state']='COMPLETED';self.put(db,'uploads',t,uid,s);return r
   if op in ('exportTenant','readExportBlob'):
    if tenant['state']!='FROZEN':fail(409,'conflict','Freeze tenant before export')
@@ -249,7 +249,7 @@ CREATE TABLE IF NOT EXISTS operations(tenant TEXT,id TEXT,fingerprint TEXT,statu
     sha=params['digest']
     if sha not in live:fail(404,'missing','Blob absent from export')
     return self.read_blob(t,sha,live[sha]),'application/octet-stream'
-   return dict(contract_version='0.1.0',tenant=tenant,
+   return dict(contract_version='0.2.0',tenant=tenant,
      resources=[json.loads(r['data']) for r in db.execute('SELECT data FROM resources WHERE tenant=? ORDER BY id',(t,))],
      uploads=[dict(session=json.loads(s['data']),parts=self.parts(db,t,s['id'])) for s in db.execute('SELECT id,data FROM uploads WHERE tenant=? ORDER BY id',(t,))],
      operations=[dict(operation_id=o['id'],state='SUCCEEDED',status=o['status'],result=json.loads(o['result']),request_fingerprint=o['fingerprint']) for o in db.execute('SELECT * FROM operations WHERE tenant=? ORDER BY id',(t,))],
@@ -262,7 +262,7 @@ class Handler(BaseHTTPRequestHandler):
  def setup(self):super().setup();self.connection.settimeout(15)
  def send(self,status,data,media='application/json'):
   raw=data if isinstance(data,bytes) else canonical(data).encode()
-  self.send_response(status);self.send_header('Content-Type',media);self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','private, no-store');self.send_header('X-Contract-Version','0.1.0');self.send_header('Connection','close');self.end_headers();self.wfile.write(raw);self.close_connection=True
+  self.send_response(status);self.send_header('Content-Type',media);self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','private, no-store');self.send_header('X-Contract-Version','0.2.0');self.send_header('Connection','close');self.end_headers();self.wfile.write(raw);self.close_connection=True
  def handle_request(self):
   try:
    split=urlsplit(self.path);path=split.path;query=parse_qs(split.query,keep_blank_values=True)
@@ -282,7 +282,7 @@ class Handler(BaseHTTPRequestHandler):
    principal=next((v for k,v in policy.items() if hmac.compare_digest(k.encode(),token.encode())),None)
    if not principal or principal.get('audience')!='neutral-attachment-v0':fail(401,'unauthenticated','Valid service credential required')
    if (tenant and tenant not in principal.get('tenants',[])) or not ({permission,'admin'} & set(principal.get('actions',[]))):fail(403,'denied','Service operation denied')
-   if self.headers.get('X-Contract-Version','0.1.0')!='0.1.0':fail(422,'unsupported','Contract version unsupported')
+   if self.headers.get('X-Contract-Version','0.2.0')!='0.2.0':fail(422,'unsupported','Contract version unsupported')
    required=set(filter(None,(x.strip() for x in self.headers.get('X-Required-Capabilities','').split(','))))
    if not required.issubset(FEATURES):fail(422,'unsupported','Required capability unsupported')
    for key,value in params.items():
@@ -333,8 +333,8 @@ class Handler(BaseHTTPRequestHandler):
  do_GET=handle_request;do_PUT=handle_request;do_POST=handle_request;do_DELETE=handle_request
 
 def main():
- p=argparse.ArgumentParser(description=__doc__);p.add_argument('--data',required=True);p.add_argument('--policy',required=True);p.add_argument('--port',type=int,default=18120);p.add_argument('--test-controls',help='Private fault-control file; test instances only');a=p.parse_args()
- store=Store(a.data,a.test_controls);server=ThreadingHTTPServer(('127.0.0.1',a.port),Handler);server.daemon_threads=True;server.store=store;server.policy=pathlib.Path(a.policy)
+ p=argparse.ArgumentParser(description=__doc__);p.add_argument('--data',required=True);p.add_argument('--policy',required=True);p.add_argument('--host',default='127.0.0.1',help='Use a container-private interface only for integration');p.add_argument('--port',type=int,default=18120);p.add_argument('--test-controls',help='Private fault-control file; test instances only');a=p.parse_args()
+ store=Store(a.data,a.test_controls);server=ThreadingHTTPServer((a.host,a.port),Handler);server.daemon_threads=True;server.store=store;server.policy=pathlib.Path(a.policy)
  worker=threading.Thread(target=store.maintenance_loop,daemon=True);worker.start();print(canonical(dict(status='READY',port=server.server_port)),flush=True)
  try:server.serve_forever(poll_interval=0.1)
  finally:store.stopping.set();server.server_close();worker.join(2)

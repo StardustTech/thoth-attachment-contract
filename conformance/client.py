@@ -27,7 +27,7 @@ class Client:
   with LOCK:TRACE.append(dict(method=method,path=path,status=actual,response_sha256=sha(raw),elapsed_ms=round((time.monotonic()-started)*1000,2)))
   allowed=(status,) if isinstance(status,int) else status
   assert actual in allowed,(method,path,actual,raw[:250])
-  assert response.headers['X-Contract-Version']=='0.1.0'
+  assert response.headers['X-Contract-Version']=='0.2.0'
   assert response.headers['Cache-Control']=='private, no-store'
   operation=None
   for template,methods in API['paths'].items():

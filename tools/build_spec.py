@@ -20,18 +20,22 @@ defs={
  'Usage':obj({'ready_count':{'type':'integer','minimum':0},'ready_bytes':{'type':'integer','minimum':0},'open_uploads':{'type':'integer','minimum':0}}),
  'Operation':obj({'operation_id':ID,'state':{'const':'SUCCEEDED'},'status':{'const':200},'result':{'oneOf':[ref('Tenant'),ref('Resource'),ref('Session'),ref('Part')]},'request_fingerprint':HASH}),
  'Error':obj({'code':{'enum':['unauthenticated','denied','missing','invalid','conflict','unsupported','unavailable','integrity_error']},'message':{'type':'string'},'retryable':{'type':'boolean'}}),
- 'Capabilities':obj({'contract_version':{'const':'0.1.0'},'features':{'type':'array','items':{'type':'string'}},'max_resource_bytes':{'type':'integer'},'max_part_bytes':{'type':'integer'},'max_parts':{'type':'integer'},'authorization_profile':{'const':'trusted-service-bearer'}}),
+ 'Capabilities':obj({'contract_version':{'const':'0.2.0'},'features':{'type':'array','items':{'type':'string'}},'max_resource_bytes':{'type':'integer'},'max_part_bytes':{'type':'integer'},'max_parts':{'type':'integer'},'authorization_profile':{'const':'trusted-service-bearer'}}),
  'ExportBlob':obj({'sha256':HASH,'byte_length':{'type':'integer','minimum':0}}),
  'ExportSession':obj({'session':ref('Session'),'parts':{'type':'array','items':ref('Part')}}),
 }
-defs['Export']=obj({'contract_version':{'const':'0.1.0'},'tenant':ref('Tenant'),'resources':{'type':'array','items':ref('Resource')},'uploads':{'type':'array','items':ref('ExportSession')},'operations':{'type':'array','items':ref('Operation')},'blobs':{'type':'array','items':ref('ExportBlob')}})
+defs['Export']=obj({'contract_version':{'const':'0.2.0'},'tenant':ref('Tenant'),'resources':{'type':'array','items':ref('Resource')},'uploads':{'type':'array','items':ref('ExportSession')},'operations':{'type':'array','items':ref('Operation')},'blobs':{'type':'array','items':ref('ExportBlob')}})
+for name in ['Begin','Resource']:
+ for field in ['byte_length','sha256']:
+  defs[name]['properties'][field]={'anyOf':[defs[name]['properties'][field],{'type':'null'}]}
+defs['Resource']['allOf']=[{'if':{'properties':{'state':{'const':'READY'}}},'then':{'properties':{'byte_length':{'type':'integer','minimum':0},'sha256':HASH}}}]
 for name in set(defs)-{'TenantCreate','Begin','PartRef','Complete'}:defs[name]['additionalProperties']=True
-schemas={'$schema':'https://json-schema.org/draft/2020-12/schema','$id':'https://neutral-attachment.invalid/schema/0.1.0','title':'Neutral Attachment v0','x-spdx-license-identifier':'Apache-2.0','$defs':defs}
+schemas={'$schema':'https://json-schema.org/draft/2020-12/schema','$id':'https://neutral-attachment.invalid/schema/0.2.0','title':'Neutral Attachment v0','x-spdx-license-identifier':'Apache-2.0','$defs':defs}
 paths={}
 def param(name,loc,schema,required=True):return {'name':name,'in':loc,'required':required,'schema':schema}
 def add(path,method,op,response,request=None,binary=False,admin=False,extra=None):
  ps=[param(n,'path',{'type':'integer','minimum':1,'maximum':256} if n=='number' else HASH if n=='digest' else ID) for n in ['tenant','resource','upload','number','operation','digest'] if '{'+n+'}' in path]
- ps += [param('X-Contract-Version','header',{'type':'string','default':'0.1.0'},False),param('X-Required-Capabilities','header',{'type':'string'},False)]
+ ps += [param('X-Contract-Version','header',{'type':'string','default':'0.2.0'},False),param('X-Required-Capabilities','header',{'type':'string'},False)]
  if '{tenant}' in path:ps.append(param('X-Tenant-Epoch','header',{'type':'integer','minimum':1}))
  if method in ['put','post','delete']:ps += [param('Idempotency-Key','header',ID),param('Content-Length','header',{'type':'integer','minimum':0})]
  if binary:ps.append(param('X-Content-SHA256','header',HASH))
@@ -59,7 +63,7 @@ def oas_refs(value):
  if isinstance(value,dict):return {k:(v.replace('#/$defs/','#/components/schemas/') if k=='$ref' else oas_refs(v)) for k,v in value.items()}
  if isinstance(value,list):return [oas_refs(v) for v in value]
  return value
-api={'openapi':'3.1.1','info':{'title':'Neutral Attachment Resource Lifecycle','version':'0.1.0','license':{'name':'Apache License 2.0','identifier':'Apache-2.0'},'description':'Normative semantics: spec/semantics.md. Independent implementations use HTTP and schema assets; no implementation SDK dependency.'},'jsonSchemaDialect':'https://json-schema.org/draft/2020-12/schema','security':[{'serviceBearer':[]}],'paths':paths,'components':{'securitySchemes':{'serviceBearer':{'type':'http','scheme':'bearer','description':'Trusted service credential; binding to tenant/action/audience is required. End-user authorization remains at the adapter.'}},'schemas':oas_refs(defs)}}
+api={'openapi':'3.1.1','info':{'title':'Neutral Attachment Resource Lifecycle','version':'0.2.0','license':{'name':'Apache License 2.0','identifier':'Apache-2.0'},'description':'Normative semantics: spec/semantics.md. Independent implementations use HTTP and schema assets; no implementation SDK dependency.'},'jsonSchemaDialect':'https://json-schema.org/draft/2020-12/schema','security':[{'serviceBearer':[]}],'paths':paths,'components':{'securitySchemes':{'serviceBearer':{'type':'http','scheme':'bearer','description':'Trusted service credential; binding to tenant/action/audience is required. End-user authorization remains at the adapter.'}},'schemas':oas_refs(defs)}}
 for name,data in [('schemas.json',schemas),('openapi.json',api)]:
  (ROOT/'spec'/name).write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n',encoding='utf-8',newline='\n')
 print('schemas',len(defs),'operations',sum(map(len,paths.values())))

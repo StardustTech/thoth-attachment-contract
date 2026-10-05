@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Neutral Attachment Resource Lifecycle
 
-Version **0.1.0** is a small HTTP contract for an isolated attachment resource set.
+Version **0.2.0** is a small HTTP contract for an isolated attachment resource set.
 It defines immutable byte resources, upload sessions, directory visibility,
 operation replay, deletion and coordinated export. Its normative assets are
 [OpenAPI](spec/openapi.json), [JSON Schema](spec/schemas.json) and
@@ -22,7 +22,12 @@ pinned package versions, or `requirements-win-py313.lock` with pip `--require-ha
 for the tested Windows x64 wheel set. Only jsonschema and its dependency closure
 are required by the reference/client. OpenAPI validator dependencies are tooling.
 Python's standard-library HTTP server is used for local conformance; the reference
-binds 127.0.0.1 and has no public deployment configuration.
+defaults to 127.0.0.1. The container profile binds its private container interface;
+the orchestrator controls host publication and trusted service access.
+
+`reference/Dockerfile` pins the Python base digest and installs the five runtime
+packages from `reference/requirements.lock`. Mount private state at `/data` and a
+read-only private policy directory at `/policy`; the service listens on port 18120.
 
 ```powershell
 python -m venv .venv
@@ -41,8 +46,9 @@ State lives under the chosen data directory: SQLite catalog plus immutable blobs
 Keep this directory private. Coordinated backups stop requests and the reference
 process, copy the complete directory, verify all file digests, then restore into a
 fresh directory. This profile validates process crashes on the tested filesystem;
-host/power failure, S3 providers, HA and application integration need additional
-validation. Buffers are bounded by the 16 MiB part / 64 MiB resource limits; the
+host/power failure, S3 providers and HA need additional validation. Application
+integration is qualified separately by its adapter's acceptance tests. Buffers
+are bounded by the 16 MiB part / 64 MiB resource limits; the
 single-node catalog serializes transitions. Capacity and hardening are deployment
 work, not demonstrated by these tests.
 

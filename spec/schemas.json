@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://neutral-attachment.invalid/schema/0.1.0",
+  "$id": "https://neutral-attachment.invalid/schema/0.2.0",
   "title": "Neutral Attachment v0",
   "x-spdx-license-identifier": "Apache-2.0",
   "$defs": {
@@ -57,13 +57,27 @@
           "pattern": "^[^\\r\\n]+/[^\\r\\n]+$"
         },
         "byte_length": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 67108864
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 67108864
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "sha256": {
-          "type": "string",
-          "pattern": "^[a-f0-9]{64}$"
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "ttl_seconds": {
           "type": "integer",
@@ -141,12 +155,26 @@
           "type": "string"
         },
         "byte_length": {
-          "type": "integer",
-          "minimum": 0
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "sha256": {
-          "type": "string",
-          "pattern": "^[a-f0-9]{64}$"
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "modified_at": {
           "type": "string",
@@ -163,7 +191,30 @@
         "sha256",
         "modified_at"
       ],
-      "additionalProperties": true
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "READY"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "byte_length": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      ]
     },
     "Session": {
       "type": "object",
@@ -351,7 +402,7 @@
       "type": "object",
       "properties": {
         "contract_version": {
-          "const": "0.1.0"
+          "const": "0.2.0"
         },
         "features": {
           "type": "array",
@@ -423,7 +474,7 @@
       "type": "object",
       "properties": {
         "contract_version": {
-          "const": "0.1.0"
+          "const": "0.2.0"
         },
         "tenant": {
           "$ref": "#/$defs/Tenant"
